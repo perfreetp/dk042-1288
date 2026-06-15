@@ -21,13 +21,16 @@ export default function VersionConfig() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
-    currentExperiment,
-    currentGroups,
+    getCurrentExperiment,
+    getCurrentGroups,
     updateGroup,
     updateExperiment,
   } = useExperimentStore();
   
-  const [previewTab, setPreviewTab] = useState<PreviewTabType>('entry');
+  const currentExperiment = getCurrentExperiment();
+  const currentGroups = getCurrentGroups();
+  
+  const [previewTab, setPreviewTab] = useState<PreviewTabType>(currentExperiment?.type || 'entry');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(currentExperiment?.name || '');
   const [selectedVersion, setSelectedVersion] = useState(currentExperiment?.appVersion || 'v5.2.0');

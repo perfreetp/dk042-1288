@@ -13,7 +13,8 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { id } = useParams();
   const location = useLocation();
-  const { currentExperiment, setCurrentExperiment, experiments } = useExperimentStore();
+  const { setCurrentExperiment, experiments, getCurrentExperiment } = useExperimentStore();
+  const currentExperiment = getCurrentExperiment();
 
   useEffect(() => {
     if (id && experiments.length > 0) {
@@ -23,21 +24,22 @@ export default function Layout({ children }: LayoutProps) {
 
   const getPageTitle = () => {
     const path = location.pathname;
+    const exp = getCurrentExperiment();
     
     if (path === '/' || path === '/experiments') {
       return { title: '实验首页', subtitle: '查看所有实验概览和关键指标' };
     }
     if (path.includes('/version')) {
-      return { title: '版本配置', subtitle: currentExperiment?.name || '实验配置' };
+      return { title: '版本配置', subtitle: exp?.name || '实验配置' };
     }
     if (path.includes('/segmentation')) {
-      return { title: '分群规则', subtitle: currentExperiment?.name || '实验配置' };
+      return { title: '分群规则', subtitle: exp?.name || '实验配置' };
     }
     if (path.includes('/metrics')) {
-      return { title: '实时指标', subtitle: currentExperiment?.name || '实验数据' };
+      return { title: '实时指标', subtitle: exp?.name || '实验数据' };
     }
     if (path.includes('/conclusion')) {
-      return { title: '实验结论', subtitle: currentExperiment?.name || '实验总结' };
+      return { title: '实验结论', subtitle: exp?.name || '实验总结' };
     }
     return { title: '灰度实验', subtitle: '' };
   };

@@ -177,6 +177,68 @@ export const mockGroups: Record<string, ExperimentGroup[]> = {
       },
     },
   ],
+  'exp-004': [
+    {
+      id: 'group-004-1',
+      name: '对照组',
+      type: 'control',
+      trafficPercent: 50,
+      materialConfig: {
+        entryConfig: {
+          icon: 'calendar',
+          title: '每日签到',
+          subtitle: '连续签到领好礼',
+          position: '我的页面',
+        },
+      },
+    },
+    {
+      id: 'group-004-2',
+      name: '实验组',
+      type: 'variant',
+      trafficPercent: 50,
+      materialConfig: {
+        entryConfig: {
+          icon: 'calendar-check',
+          title: '签到领积分',
+          subtitle: '连续7天得大奖',
+          position: '首页底部',
+          badgeText: '新',
+        },
+      },
+    },
+  ],
+  'exp-005': [
+    {
+      id: 'group-005-1',
+      name: '对照组',
+      type: 'control',
+      trafficPercent: 50,
+      materialConfig: {
+        entryConfig: {
+          icon: 'gift',
+          title: '积分商城',
+          subtitle: '积分换好物',
+          position: '我的页面',
+        },
+      },
+    },
+    {
+      id: 'group-005-2',
+      name: '实验组',
+      type: 'variant',
+      trafficPercent: 50,
+      materialConfig: {
+        entryConfig: {
+          icon: 'store',
+          title: '积分商城',
+          subtitle: '限时兑换',
+          position: '首页顶部',
+          badgeText: '热门',
+        },
+      },
+    },
+  ],
 };
 
 export const mockSegmentRules: Record<string, SegmentRule> = {
@@ -201,22 +263,61 @@ export const mockSegmentRules: Record<string, SegmentRule> = {
     totalExposureLimit: 3000000,
     populationPercent: 20,
   },
+  'exp-004': {
+    regions: ['北京市', '上海市', '广州市', '深圳市', '成都市', '武汉市'],
+    channels: ['AppStore', '华为应用市场', '小米应用商店', 'vivo应用商店'],
+    dailyExposureLimit: 60000,
+    totalExposureLimit: 1500000,
+    populationPercent: 8,
+  },
+  'exp-005': {
+    regions: ['全国'],
+    channels: ['AppStore', '华为应用市场', '小米应用商店', 'OPPO软件商店', 'vivo应用商店', '应用宝'],
+    dailyExposureLimit: 120000,
+    totalExposureLimit: 6000000,
+    populationPercent: 12,
+  },
 };
 
-export const generateMockMetricData = (days: number = 14): MetricData[] => {
+export const generateMockMetricData = (
+  days: number = 14,
+  metricType: 'clickRate' | 'conversion' | 'retention' = 'clickRate',
+  experimentId?: string
+): MetricData[] => {
   const data: MetricData[] = [];
   const today = new Date();
+  
+  const baseValues: Record<string, { control: number; variant: number }> = {
+    'exp-001': { control: 0.07, variant: 0.09 },
+    'exp-002': { control: 0.13, variant: 0.17 },
+    'exp-003': { control: 0.05, variant: 0.065 },
+    'exp-004': { control: 0.045, variant: 0.058 },
+    'exp-005': { control: 0.06, variant: 0.075 },
+  };
+  
+  const metricMultiplier: Record<string, number> = {
+    clickRate: 1,
+    conversion: 0.35,
+    retention: 4,
+  };
+  
+  const base = experimentId && baseValues[experimentId] 
+    ? baseValues[experimentId] 
+    : { control: 0.08, variant: 0.095 };
+  const multiplier = metricMultiplier[metricType] || 1;
   
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
     
-    const baseValue = 0.08 + Math.random() * 0.04;
+    const controlBase = base.control * multiplier;
+    const variantBase = base.variant * multiplier;
+    
     data.push({
       date: dateStr,
-      control: parseFloat((baseValue + (Math.random() - 0.5) * 0.02).toFixed(4)),
-      variant: parseFloat((baseValue + 0.015 + (Math.random() - 0.5) * 0.02).toFixed(4)),
+      control: parseFloat((controlBase + (Math.random() - 0.5) * controlBase * 0.2).toFixed(4)),
+      variant: parseFloat((variantBase + (Math.random() - 0.5) * variantBase * 0.2).toFixed(4)),
     });
   }
   
@@ -276,6 +377,84 @@ export const mockGroupMetrics: Record<string, GroupMetrics[]> = {
       },
     },
   ],
+  'exp-003': [
+    {
+      groupId: 'group-003-1',
+      groupName: '对照组',
+      type: 'control',
+      coreMetrics: {
+        impressions: 920000,
+        clicks: 46000,
+        clickRate: 0.05,
+        conversionRate: 0.018,
+        retention7d: 0.42,
+      },
+    },
+    {
+      groupId: 'group-003-2',
+      groupName: '实验组',
+      type: 'variant',
+      coreMetrics: {
+        impressions: 915000,
+        clicks: 59475,
+        clickRate: 0.065,
+        conversionRate: 0.024,
+        retention7d: 0.45,
+      },
+    },
+  ],
+  'exp-004': [
+    {
+      groupId: 'group-004-1',
+      groupName: '对照组',
+      type: 'control',
+      coreMetrics: {
+        impressions: 320000,
+        clicks: 14400,
+        clickRate: 0.045,
+        conversionRate: 0.012,
+        retention7d: 0.22,
+      },
+    },
+    {
+      groupId: 'group-004-2',
+      groupName: '实验组',
+      type: 'variant',
+      coreMetrics: {
+        impressions: 318000,
+        clicks: 18444,
+        clickRate: 0.058,
+        conversionRate: 0.015,
+        retention7d: 0.25,
+      },
+    },
+  ],
+  'exp-005': [
+    {
+      groupId: 'group-005-1',
+      groupName: '对照组',
+      type: 'control',
+      coreMetrics: {
+        impressions: 450000,
+        clicks: 27000,
+        clickRate: 0.06,
+        conversionRate: 0.021,
+        retention7d: 0.30,
+      },
+    },
+    {
+      groupId: 'group-005-2',
+      groupName: '实验组',
+      type: 'variant',
+      coreMetrics: {
+        impressions: 448000,
+        clicks: 33600,
+        clickRate: 0.075,
+        conversionRate: 0.026,
+        retention7d: 0.33,
+      },
+    },
+  ],
 };
 
 export const mockComments: Comment[] = [
@@ -315,6 +494,20 @@ export const mockHypothesis: ExperimentHypothesis[] = [
     tags: ['会员入口', '点击率', '位置优化'],
     result: 'positive',
   },
+  {
+    id: 'hypo-002',
+    assumption: '更强调稀缺性的弹窗文案可以提升新用户转化率',
+    conclusion: '实验组转化率提升26.2%，稀缺性文案确实能促使用户更快做出决策，建议在大促期间使用。',
+    tags: ['弹窗文案', '转化率', '稀缺性'],
+    result: 'positive',
+  },
+  {
+    id: 'hypo-003',
+    assumption: '卡片式权益展示比列表式展示更能提升会员开通率',
+    conclusion: '实验组开通率提升30%，卡片式展示视觉效果更好，建议全量上线年度会员卡片。',
+    tags: ['会员权益', '开通率', '展示方式'],
+    result: 'positive',
+  },
 ];
 
 export const mockAlerts: AbnormalAlert[] = [
@@ -336,6 +529,15 @@ export const mockAlerts: AbnormalAlert[] = [
     metricChange: '+5%',
     possibleReasons: ['正常波动', '运营活动影响'],
   },
+  {
+    id: 'alert-003',
+    type: 'retention',
+    severity: 'high',
+    description: '实验组7日留存率较上周下降8%',
+    timestamp: '2026-06-11 09:00',
+    metricChange: '-8%',
+    possibleReasons: ['版本更新影响', '新用户质量变化', '功能异常'],
+  },
 ];
 
 export const mockAppVersions: AppVersion[] = [
@@ -355,6 +557,9 @@ export const mockRegions: Region[] = [
   { id: 'xa', name: '西安市', type: 'city' },
   { id: 'nj', name: '南京市', type: 'city' },
   { id: 'cq', name: '重庆市', type: 'city' },
+  { id: 'tj', name: '天津市', type: 'city' },
+  { id: 'su', name: '苏州市', type: 'city' },
+  { id: 'xz', name: '徐州市', type: 'city' },
   { id: 'nationwide', name: '全国', type: 'province' },
 ];
 
@@ -368,6 +573,7 @@ export const mockChannels: Channel[] = [
   { id: 'baidu', name: '百度手机助手', category: '安卓渠道', icon: 'search' },
   { id: 'taobao', name: '淘宝推广', category: '推广渠道', icon: 'megaphone' },
   { id: 'wechat', name: '微信推广', category: '推广渠道', icon: 'message-circle' },
+  { id: 'douyin', name: '抖音推广', category: '推广渠道', icon: 'video' },
 ];
 
 export const mockOverviewStats = {
@@ -378,3 +584,93 @@ export const mockOverviewStats = {
   completedExperiments: 12,
   successRate: 0.67,
 };
+
+export const generateDefaultGroups = (experimentId: string, type: 'entry' | 'popup' | 'benefit'): ExperimentGroup[] => {
+  const timestamp = Date.now();
+  
+  const defaultConfigs = {
+    entry: {
+      control: {
+        entryConfig: {
+          icon: 'default',
+          title: '功能入口',
+          subtitle: '点击查看详情',
+          position: '默认位置',
+        },
+      },
+      variant: {
+        entryConfig: {
+          icon: 'star',
+          title: '新功能入口',
+          subtitle: '全新体验',
+          position: '新位置',
+          badgeText: 'NEW',
+        },
+      },
+    },
+    popup: {
+      control: {
+        popupConfig: {
+          title: '温馨提示',
+          content: '欢迎使用我们的服务',
+          buttonText: '知道了',
+          secondaryButtonText: '取消',
+        },
+      },
+      variant: {
+        popupConfig: {
+          title: '限时优惠',
+          content: '新用户专享福利，立即领取',
+          buttonText: '立即领取',
+          secondaryButtonText: '稍后再说',
+        },
+      },
+    },
+    benefit: {
+      control: {
+        benefitConfig: {
+          title: '普通会员',
+          subtitle: '基础会员权益',
+          benefits: ['权益1', '权益2', '权益3'],
+          originalPrice: '¥30/月',
+          discountPrice: '¥25/月',
+        },
+      },
+      variant: {
+        benefitConfig: {
+          title: '高级会员',
+          subtitle: '尊享全部权益',
+          benefits: ['权益1', '权益2', '权益3', '权益4', '权益5'],
+          originalPrice: '¥60/月',
+          discountPrice: '¥45/月',
+          badgeText: '推荐',
+        },
+      },
+    },
+  };
+  
+  return [
+    {
+      id: `${experimentId}-control-${timestamp}`,
+      name: '对照组',
+      type: 'control' as const,
+      trafficPercent: 50,
+      materialConfig: defaultConfigs[type].control,
+    },
+    {
+      id: `${experimentId}-variant-${timestamp}`,
+      name: '实验组',
+      type: 'variant' as const,
+      trafficPercent: 50,
+      materialConfig: defaultConfigs[type].variant,
+    },
+  ];
+};
+
+export const generateDefaultSegmentRule = (): SegmentRule => ({
+  regions: ['全国'],
+  channels: ['AppStore', '华为应用市场', '小米应用商店'],
+  dailyExposureLimit: 100000,
+  totalExposureLimit: 5000000,
+  populationPercent: 10,
+});

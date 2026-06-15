@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
@@ -35,15 +35,37 @@ export default function Metrics() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
-    currentExperiment,
-    currentMetrics,
-    metricTrendData,
-    alerts,
+    currentExperimentId,
+    setCurrentExperiment,
+    getCurrentExperiment,
+    getCurrentMetrics,
+    getCurrentAlerts,
+    getMetricTrendData,
   } = useExperimentStore();
   
   const [timeRange, setTimeRange] = useState<TimeRangeType>('14d');
   const [activeMetric, setActiveMetric] = useState<MetricType>('clickRate');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (id && currentExperimentId !== id) {
+      setCurrentExperiment(id);
+    }
+  }, [id, currentExperimentId, setCurrentExperiment]);
+
+  const currentExperiment = useMemo(() => getCurrentExperiment(), [currentExperimentId, getCurrentExperiment]);
+  const currentMetrics = useMemo(() => getCurrentMetrics(), [currentExperimentId, getCurrentMetrics]);
+  const alerts = useMemo(() => getCurrentAlerts(), [currentExperimentId, getCurrentAlerts]);
+
+  const daysMap: Record<TimeRangeType, number> = {
+    '7d': 7,
+    '14d': 14,
+    '30d': 30,
+  };
+
+  const metricTrendData = useMemo(() => {
+    return getMetricTrendData(activeMetric, daysMap[timeRange]);
+  }, [activeMetric, timeRange, currentExperimentId, getMetricTrendData]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

@@ -30,16 +30,22 @@ export default function Conclusion() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
-    currentExperiment,
-    currentMetrics,
-    comments,
-    hypothesis,
-    isFrozen,
+    getCurrentExperiment,
+    getCurrentMetrics,
+    getCurrentComments,
+    getCurrentHypothesis,
+    getCurrentIsFrozen,
     addComment,
     updateHypothesis,
     freezeResults,
     endExperiment,
   } = useExperimentStore();
+
+  const currentExperiment = getCurrentExperiment();
+  const currentMetrics = getCurrentMetrics();
+  const comments = getCurrentComments();
+  const hypothesis = getCurrentHypothesis();
+  const isFrozen = getCurrentIsFrozen();
 
   const [commentInput, setCommentInput] = useState('');
   const [showEndConfirm, setShowEndConfirm] = useState(false);

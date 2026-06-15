@@ -19,12 +19,15 @@ import { cn } from '@/lib/utils';
 export default function Segmentation() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { currentSegmentRule, updateSegmentRule, currentExperiment, updateExperiment } = useExperimentStore();
+  const { updateSegmentRule, updateExperiment, getCurrentSegmentRule, getCurrentExperiment } = useExperimentStore();
   
   const [regionSearch, setRegionSearch] = useState('');
   const [channelSearch, setChannelSearch] = useState('');
   const [showAllRegions, setShowAllRegions] = useState(false);
   const [showAllChannels, setShowAllChannels] = useState(false);
+
+  const currentSegmentRule = getCurrentSegmentRule();
+  const currentExperiment = getCurrentExperiment();
 
   const selectedRegions = currentSegmentRule?.regions || [];
   const selectedChannels = currentSegmentRule?.channels || [];
