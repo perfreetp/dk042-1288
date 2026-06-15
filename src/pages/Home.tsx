@@ -18,9 +18,11 @@ type TabType = 'all' | 'running' | 'ended' | 'draft';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { experiments, overviewStats, addExperiment } = useExperimentStore();
+  const { experiments, addExperiment, getOverviewStats } = useExperimentStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const overviewStats = getOverviewStats();
 
   const tabs: { key: TabType; label: string; count: number }[] = [
     { key: 'all', label: '全部实验', count: experiments.length },
@@ -37,8 +39,7 @@ export default function Home() {
   });
 
   const handleCreateExperiment = () => {
-    const newId = `exp-${Date.now()}`;
-    addExperiment({
+    const newId = addExperiment({
       name: '新实验',
       description: '点击编辑实验描述',
       status: 'draft',

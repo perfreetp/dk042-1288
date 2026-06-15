@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   MapPin,
@@ -19,15 +19,32 @@ import { cn } from '@/lib/utils';
 export default function Segmentation() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { updateSegmentRule, updateExperiment, getCurrentSegmentRule, getCurrentExperiment } = useExperimentStore();
-  
+  const {
+    experiments,
+    experimentsData,
+    currentExperimentId,
+    setCurrentExperiment,
+    updateSegmentRule,
+    updateExperiment,
+  } = useExperimentStore();
+
+  useEffect(() => {
+    if (id && currentExperimentId !== id) {
+      setCurrentExperiment(id);
+    }
+  }, [id, currentExperimentId, setCurrentExperiment]);
+
   const [regionSearch, setRegionSearch] = useState('');
   const [channelSearch, setChannelSearch] = useState('');
   const [showAllRegions, setShowAllRegions] = useState(false);
   const [showAllChannels, setShowAllChannels] = useState(false);
 
-  const currentSegmentRule = getCurrentSegmentRule();
-  const currentExperiment = getCurrentExperiment();
+  const currentExperiment = useMemo(() => 
+    experiments.find(e => e.id === currentExperimentId) || null,
+    [currentExperimentId, experiments]
+  );
+  const expData = currentExperimentId ? experimentsData[currentExperimentId] : undefined;
+  const currentSegmentRule = expData?.segmentRule || null;
 
   const selectedRegions = currentSegmentRule?.regions || [];
   const selectedChannels = currentSegmentRule?.channels || [];

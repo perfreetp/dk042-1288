@@ -40,6 +40,7 @@ interface ExperimentStore {
   currentExperimentId: string | null;
   overviewStats: typeof mockOverviewStats;
   experimentsData: Record<string, ExperimentData>;
+  getOverviewStats: () => typeof mockOverviewStats;
   
   setCurrentExperiment: (id: string) => void;
   getCurrentExperiment: () => Experiment | null;
@@ -353,15 +354,59 @@ export const useExperimentStore = create<ExperimentStore>()(
           progress: 0,
         };
         
+        get().ensureExperimentData(newId, experiment.type);
+        
         set((state) => ({
           experiments: [newExperiment, ...state.experiments],
+          currentExperimentId: newId,
         }));
-        
-        get().ensureExperimentData(newId, experiment.type);
         
         return newId;
       },
       
+      getOverviewStats: () => {
+        const state = get();
+        const runningExperiments = state.experiments.filter(e => e.status === 'running');
+        const endedExperiments = state.experiments.filter(e => e.status === 'ended');
+        let totalImpressions = 0;
+        let totalClicks = 0;
+        let totalRetention = 0;
+        let runningCount = 0;
+        let successCount = 0;
+
+        state.experiments.forEach(exp => {
+          const data = state.getExperimentData(exp.id);
+          if (data && data.metrics && data.metrics.length > 0) {
+            const variantMetrics = data.metrics.find(m => m.type === 'variant');
+            const controlMetrics = data.metrics.find(m => m.type === 'control');
+            const useMetrics = variantMetrics || controlMetrics;
+            if (useMetrics && exp.status === 'running') {
+              totalImpressions += useMetrics.coreMetrics.impressions;
+              totalClicks += useMetrics.coreMetrics.clicks;
+              totalRetention += useMetrics.coreMetrics.retention7d;
+              runningCount++;
+            }
+            if (variantMetrics && controlMetrics && exp.status === 'ended') {
+              const uplift = ((variantMetrics.coreMetrics.clickRate - controlMetrics.coreMetrics.clickRate) / controlMetrics.coreMetrics.clickRate) * 100;
+              if (uplift > 0) successCount++;
+            }
+          }
+        });
+
+        if (runningCount === 0 && endedExperiments.length === 0) {
+          return mockOverviewStats;
+        }
+
+        return {
+          runningExperiments: runningExperiments.length,
+          totalImpressions,
+          avgClickRate: totalImpressions > 0 ? totalClicks / totalImpressions : mockOverviewStats.avgClickRate,
+          avgRetention7d: runningCount > 0 ? totalRetention / runningCount : mockOverviewStats.avgRetention7d,
+          completedExperiments: endedExperiments.length,
+          successRate: endedExperiments.length > 0 ? successCount / endedExperiments.length : mockOverviewStats.successRate,
+        };
+      },
+
       clearAllData: () => {
         set({
           experiments: mockExperiments,

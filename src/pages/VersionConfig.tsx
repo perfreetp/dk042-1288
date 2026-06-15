@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Settings,
@@ -21,14 +21,26 @@ export default function VersionConfig() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
-    getCurrentExperiment,
-    getCurrentGroups,
+    experiments,
+    experimentsData,
+    currentExperimentId,
+    setCurrentExperiment,
     updateGroup,
     updateExperiment,
   } = useExperimentStore();
-  
-  const currentExperiment = getCurrentExperiment();
-  const currentGroups = getCurrentGroups();
+
+  useEffect(() => {
+    if (id && currentExperimentId !== id) {
+      setCurrentExperiment(id);
+    }
+  }, [id, currentExperimentId, setCurrentExperiment]);
+
+  const currentExperiment = useMemo(() => 
+    experiments.find(e => e.id === currentExperimentId) || null,
+    [currentExperimentId, experiments]
+  );
+  const expData = currentExperimentId ? experimentsData[currentExperimentId] : undefined;
+  const currentGroups = expData?.groups || [];
   
   const [previewTab, setPreviewTab] = useState<PreviewTabType>(currentExperiment?.type || 'entry');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -37,6 +49,15 @@ export default function VersionConfig() {
   const [experimentType, setExperimentType] = useState<'entry' | 'popup' | 'benefit'>(
     currentExperiment?.type || 'entry'
   );
+
+  useEffect(() => {
+    if (currentExperiment) {
+      setPreviewTab(currentExperiment.type || 'entry');
+      setEditName(currentExperiment.name || '');
+      setSelectedVersion(currentExperiment.appVersion || 'v5.2.0');
+      setExperimentType(currentExperiment.type || 'entry');
+    }
+  }, [currentExperimentId, currentExperiment]);
 
   const controlGroup = currentGroups.find(g => g.type === 'control');
   const variantGroup = currentGroups.find(g => g.type === 'variant');
@@ -184,8 +205,8 @@ export default function VersionConfig() {
             </label>
             <input
               type="text"
-              defaultValue={currentExperiment?.hypothesis}
-              onBlur={(e) => {
+              value={currentExperiment?.hypothesis || ''}
+              onChange={(e) => {
                 if (id) updateExperiment(id, { hypothesis: e.target.value });
               }}
               placeholder="输入你的实验假设..."

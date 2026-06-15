@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   FileCheck,
@@ -30,22 +30,31 @@ export default function Conclusion() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
-    getCurrentExperiment,
-    getCurrentMetrics,
-    getCurrentComments,
-    getCurrentHypothesis,
-    getCurrentIsFrozen,
+    experiments,
+    experimentsData,
+    currentExperimentId,
+    setCurrentExperiment,
     addComment,
     updateHypothesis,
     freezeResults,
     endExperiment,
   } = useExperimentStore();
 
-  const currentExperiment = getCurrentExperiment();
-  const currentMetrics = getCurrentMetrics();
-  const comments = getCurrentComments();
-  const hypothesis = getCurrentHypothesis();
-  const isFrozen = getCurrentIsFrozen();
+  useEffect(() => {
+    if (id && currentExperimentId !== id) {
+      setCurrentExperiment(id);
+    }
+  }, [id, currentExperimentId, setCurrentExperiment]);
+
+  const currentExperiment = useMemo(() => 
+    experiments.find(e => e.id === currentExperimentId) || null, 
+    [currentExperimentId, experiments]
+  );
+  const expData = currentExperimentId ? experimentsData[currentExperimentId] : undefined;
+  const currentMetrics = expData?.metrics || [];
+  const comments = expData?.comments || [];
+  const hypothesis = expData?.hypothesis || [];
+  const isFrozen = expData?.isFrozen || false;
 
   const [commentInput, setCommentInput] = useState('');
   const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -57,6 +66,13 @@ export default function Conclusion() {
   const [tags, setTags] = useState<string[]>(hypothesis[0]?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [syncStatus, setSyncStatus] = useState(false);
+
+  useEffect(() => {
+    setAssumption(hypothesis[0]?.assumption || currentExperiment?.hypothesis || '');
+    setConclusion(hypothesis[0]?.conclusion || '');
+    setResult((hypothesis[0]?.result as 'positive' | 'negative' | 'neutral') || 'positive');
+    setTags(hypothesis[0]?.tags || []);
+  }, [currentExperimentId, hypothesis, currentExperiment]);
 
   const controlMetrics = currentMetrics.find(m => m.type === 'control');
   const variantMetrics = currentMetrics.find(m => m.type === 'variant');
@@ -202,29 +218,33 @@ export default function Conclusion() {
         </div>
 
         <div className="flex items-center gap-3">
-          {currentExperiment?.status === 'running' && (
-            <>
-              <button
-                onClick={handleFreeze}
-                disabled={isFrozen}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                  isFrozen
-                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                    : 'text-slate-600 border border-slate-200 hover:bg-slate-50'
-                )}
-              >
-                <Snowflake className="w-4 h-4" />
-                {isFrozen ? '已冻结' : '冻结结果'}
-              </button>
-              <button
-                onClick={() => setShowEndConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-warning-500 text-white text-sm font-medium rounded-lg hover:bg-warning-600 transition-colors"
-              >
-                <StopCircle className="w-4 h-4" />
-                结束实验
-              </button>
-            </>
+          <button
+            onClick={handleFreeze}
+            disabled={isFrozen}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              isFrozen
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'text-slate-600 border border-slate-200 hover:bg-slate-50'
+            )}
+          >
+            <Snowflake className="w-4 h-4" />
+            {isFrozen ? '已冻结' : '冻结结果'}
+          </button>
+          {currentExperiment?.status === 'running' && !isFrozen && (
+            <button
+              onClick={() => setShowEndConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-warning-500 text-white text-sm font-medium rounded-lg hover:bg-warning-600 transition-colors"
+            >
+              <StopCircle className="w-4 h-4" />
+              结束实验
+            </button>
+          )}
+          {currentExperiment?.status === 'ended' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-500 text-sm font-medium rounded-lg">
+              <Check className="w-4 h-4" />
+              实验已结束
+            </span>
           )}
         </div>
       </div>

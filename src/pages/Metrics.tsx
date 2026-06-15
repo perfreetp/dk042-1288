@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ArrowRight,
   Info,
+  Snowflake,
 } from 'lucide-react';
 import {
   LineChart,
@@ -35,11 +36,10 @@ export default function Metrics() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const {
+    experiments,
+    experimentsData,
     currentExperimentId,
     setCurrentExperiment,
-    getCurrentExperiment,
-    getCurrentMetrics,
-    getCurrentAlerts,
     getMetricTrendData,
   } = useExperimentStore();
   
@@ -53,9 +53,14 @@ export default function Metrics() {
     }
   }, [id, currentExperimentId, setCurrentExperiment]);
 
-  const currentExperiment = useMemo(() => getCurrentExperiment(), [currentExperimentId, getCurrentExperiment]);
-  const currentMetrics = useMemo(() => getCurrentMetrics(), [currentExperimentId, getCurrentMetrics]);
-  const alerts = useMemo(() => getCurrentAlerts(), [currentExperimentId, getCurrentAlerts]);
+  const currentExperiment = useMemo(() => 
+    experiments.find(e => e.id === currentExperimentId) || null,
+    [currentExperimentId, experiments]
+  );
+  const expData = currentExperimentId ? experimentsData[currentExperimentId] : undefined;
+  const currentMetrics = expData?.metrics || [];
+  const alerts = expData?.alerts || [];
+  const isFrozen = expData?.isFrozen || false;
 
   const daysMap: Record<TimeRangeType, number> = {
     '7d': 7,
@@ -163,7 +168,7 @@ export default function Metrics() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium',
             currentExperiment?.status === 'running'
@@ -176,6 +181,12 @@ export default function Metrics() {
             )}></span>
             {currentExperiment?.status === 'running' ? '实验进行中' : '实验已结束'}
           </span>
+          {isFrozen && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 text-sm font-medium rounded-lg">
+              <Snowflake className="w-3.5 h-3.5" />
+              结果已冻结
+            </span>
+          )}
           <span className="text-sm text-slate-500">
             <Clock className="w-4 h-4 inline mr-1" />
             已运行 14 天

@@ -6,9 +6,11 @@ import {
   Clock,
   ChevronRight,
   Settings,
+  Snowflake,
 } from 'lucide-react';
 import type { Experiment } from '@/types';
 import { cn } from '@/lib/utils';
+import { useExperimentStore } from '@/store/useExperimentStore';
 
 interface ExperimentCardProps {
   experiment: Experiment;
@@ -17,6 +19,9 @@ interface ExperimentCardProps {
 
 export default function ExperimentCard({ experiment, index = 0 }: ExperimentCardProps) {
   const navigate = useNavigate();
+  const { getExperimentData } = useExperimentStore();
+  const expData = getExperimentData(experiment.id);
+  const isFrozen = expData?.isFrozen || false;
 
   const statusConfig = {
     running: {
@@ -69,7 +74,7 @@ export default function ExperimentCard({ experiment, index = 0 }: ExperimentCard
       style={{ animationDelay: `${index * 50}ms`}}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span
             className={cn(
               'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
@@ -82,6 +87,12 @@ export default function ExperimentCard({ experiment, index = 0 }: ExperimentCard
           <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', typeConfigData.color)}>
             {typeConfigData.label}
           </span>
+          {isFrozen && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-600 text-xs font-medium rounded-full">
+              <Snowflake className="w-3 h-3" />
+              已冻结
+            </span>
+          )}
         </div>
         
         <button
