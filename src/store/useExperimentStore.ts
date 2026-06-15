@@ -11,6 +11,7 @@ import type {
   MetricData,
   OptimizationPlan,
   Notification,
+  ReportSnapshot,
 } from '@/types';
 import {
   mockExperiments,
@@ -44,8 +45,10 @@ interface ExperimentStore {
   experimentsData: Record<string, ExperimentData>;
   optimizationPlans: OptimizationPlan[];
   notifications: Notification[];
+  reportSnapshots: ReportSnapshot[];
   getOverviewStats: () => typeof mockOverviewStats;
   getUnreadNotificationCount: () => number;
+  getPendingCommentCount: (experimentId: string) => number;
   
   setCurrentExperiment: (id: string) => void;
   getCurrentExperiment: () => Experiment | null;
@@ -61,7 +64,8 @@ interface ExperimentStore {
   updateExperiment: (id: string, data: Partial<Experiment>) => void;
   updateGroup: (groupId: string, data: Partial<ExperimentGroup>) => void;
   updateSegmentRule: (data: Partial<SegmentRule>) => void;
-  addComment: (content: string, userName: string) => void;
+  addComment: (content: string, userName: string, isPending?: boolean, commentId?: string) => void;
+  markCommentHandled: (commentId: string) => void;
   updateHypothesis: (data: Partial<ExperimentHypothesis>) => void;
   freezeResults: () => void;
   endExperiment: (id: string) => void;
@@ -76,6 +80,8 @@ interface ExperimentStore {
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  
+  createReportSnapshot: (experimentId: string) => string;
   
   clearAllData: () => void;
 }
@@ -120,6 +126,7 @@ export const useExperimentStore = create<ExperimentStore>()(
       experimentsData: initializeExperimentData(),
       optimizationPlans: [],
       notifications: [],
+      reportSnapshots: [],
       
       setCurrentExperiment: (id: string) => {
         const state = get();
@@ -273,17 +280,18 @@ export const useExperimentStore = create<ExperimentStore>()(
         }));
       },
       
-      addComment: (content: string, userName: string) => {
+      addComment: (content: string, userName: string, isPending?: boolean, commentId?: string) => {
         const state = get();
         if (!state.currentExperimentId) return;
         
         const newComment: Comment = {
-          id: `comment-${Date.now()}`,
+          id: commentId || `comment-${Date.now()}`,
           userId: 'current-user',
           userName,
           userAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`,
           content,
           createdAt: new Date().toLocaleString('zh-CN'),
+          isPending: isPending || false,
           replies: [],
         };
         
@@ -296,6 +304,31 @@ export const useExperimentStore = create<ExperimentStore>()(
             },
           },
         }));
+      },
+      
+      markCommentHandled: (commentId: string) => {
+        const state = get();
+        if (!state.currentExperimentId) return;
+        
+        set((state: any) => {
+          const expData = state.experimentsData[state.currentExperimentId!];
+          if (!expData) return state;
+          
+          return {
+            experimentsData: {
+              ...state.experimentsData,
+              [state.currentExperimentId!]: {
+                ...expData,
+                comments: expData.comments.map((c: Comment) =>
+                  c.id === commentId ? { ...c, isPending: false } : c
+                ),
+              },
+            },
+            notifications: state.notifications.map((n: Notification) =>
+              n.commentId === commentId ? { ...n, isRead: true } : n
+            ),
+          };
+        });
       },
       
       updateHypothesis: (data: Partial<ExperimentHypothesis>) => {
@@ -426,6 +459,13 @@ export const useExperimentStore = create<ExperimentStore>()(
         return state.notifications.filter(n => !n.isRead).length;
       },
 
+      getPendingCommentCount: (experimentId: string) => {
+        const state = get();
+        const data = state.getExperimentData(experimentId);
+        if (!data) return 0;
+        return data.comments.filter(c => c.isPending).length;
+      },
+
       addOptimizationPlan: (plan) => {
         const newId = `plan-${Date.now()}`;
         const newPlan: OptimizationPlan = {
@@ -473,6 +513,43 @@ export const useExperimentStore = create<ExperimentStore>()(
         }));
       },
 
+      createReportSnapshot: (experimentId: string) => {
+        const state = get();
+        const experiment = state.experiments.find(e => e.id === experimentId);
+        const data = state.getExperimentData(experimentId);
+        if (!experiment || !data) return '';
+        
+        const snapshotId = `snapshot-${Date.now()}`;
+        const snapshot: ReportSnapshot = {
+          id: snapshotId,
+          experimentId,
+          experimentName: experiment.name,
+          createdAt: new Date().toLocaleString('zh-CN'),
+          data: {
+            experiment: {
+              name: experiment.name,
+              description: experiment.description,
+              type: experiment.type,
+              appVersion: experiment.appVersion,
+              appName: experiment.appName,
+              status: experiment.status,
+            },
+            groups: JSON.parse(JSON.stringify(data.groups)),
+            segmentRule: data.segmentRule ? JSON.parse(JSON.stringify(data.segmentRule)) : null,
+            metrics: JSON.parse(JSON.stringify(data.metrics)),
+            comments: JSON.parse(JSON.stringify(data.comments)),
+            hypothesis: JSON.parse(JSON.stringify(data.hypothesis)),
+            isFrozen: data.isFrozen,
+          },
+        };
+        
+        set((state) => ({
+          reportSnapshots: [snapshot, ...state.reportSnapshots],
+        }));
+        
+        return snapshotId;
+      },
+
       clearAllData: () => {
         set({
           experiments: mockExperiments,
@@ -480,6 +557,7 @@ export const useExperimentStore = create<ExperimentStore>()(
           experimentsData: initializeExperimentData(),
           optimizationPlans: [],
           notifications: [],
+          reportSnapshots: [],
         });
       },
     }),
@@ -492,6 +570,7 @@ export const useExperimentStore = create<ExperimentStore>()(
         currentExperimentId: state.currentExperimentId,
         optimizationPlans: state.optimizationPlans,
         notifications: state.notifications,
+        reportSnapshots: state.reportSnapshots,
       }),
       merge: (persistedState, currentState) => {
         const defaultData = initializeExperimentData();
@@ -515,11 +594,16 @@ export const useExperimentStore = create<ExperimentStore>()(
         }
         
         const mergedExperimentsData: Record<string, ExperimentData> = {};
-        Object.keys(defaultData).forEach(expId => {
+        const allExpIds = new Set([
+          ...Object.keys(defaultData),
+          ...Object.keys(persisted.experimentsData || {}),
+        ]);
+        
+        allExpIds.forEach(expId => {
           const defaultExpData = defaultData[expId];
           const persistedExpData = persisted.experimentsData?.[expId];
           
-          if (persistedExpData) {
+          if (persistedExpData && defaultExpData) {
             mergedExperimentsData[expId] = {
               ...defaultExpData,
               ...persistedExpData,
@@ -533,7 +617,9 @@ export const useExperimentStore = create<ExperimentStore>()(
               alerts: persistedExpData.alerts || defaultExpData.alerts,
               trendData: defaultExpData.trendData,
             };
-          } else {
+          } else if (persistedExpData) {
+            mergedExperimentsData[expId] = persistedExpData;
+          } else if (defaultExpData) {
             mergedExperimentsData[expId] = defaultExpData;
           }
         });
@@ -545,6 +631,7 @@ export const useExperimentStore = create<ExperimentStore>()(
           currentExperimentId: persisted.currentExperimentId || null,
           optimizationPlans: persisted.optimizationPlans || [],
           notifications: persisted.notifications || [],
+          reportSnapshots: persisted.reportSnapshots || [],
         };
       },
     }

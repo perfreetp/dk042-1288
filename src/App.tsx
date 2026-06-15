@@ -5,6 +5,7 @@ import VersionConfig from '@/pages/VersionConfig';
 import Segmentation from '@/pages/Segmentation';
 import Metrics from '@/pages/Metrics';
 import Conclusion from '@/pages/Conclusion';
+import OptimizationBoard from '@/pages/OptimizationBoard';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/experiments" element={<Home />} />
+          <Route path="/optimization-board" element={<OptimizationBoard />} />
           <Route path="/experiments/:id/version" element={<VersionConfig />} />
           <Route path="/experiments/:id/segmentation" element={<Segmentation />} />
           <Route path="/experiments/:id/metrics" element={<Metrics />} />

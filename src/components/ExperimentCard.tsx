@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Settings,
   Snowflake,
+  MessageCircle,
 } from 'lucide-react';
 import type { Experiment } from '@/types';
 import { cn } from '@/lib/utils';
@@ -19,9 +20,10 @@ interface ExperimentCardProps {
 
 export default function ExperimentCard({ experiment, index = 0 }: ExperimentCardProps) {
   const navigate = useNavigate();
-  const { getExperimentData } = useExperimentStore();
+  const { getExperimentData, getPendingCommentCount } = useExperimentStore();
   const expData = getExperimentData(experiment.id);
   const isFrozen = expData?.isFrozen || false;
+  const pendingCount = getPendingCommentCount(experiment.id);
 
   const statusConfig = {
     running: {
@@ -91,6 +93,12 @@ export default function ExperimentCard({ experiment, index = 0 }: ExperimentCard
             <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-600 text-xs font-medium rounded-full">
               <Snowflake className="w-3 h-3" />
               已冻结
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-warning-50 text-warning-600 text-xs font-medium rounded-full">
+              <MessageCircle className="w-3 h-3" />
+              {pendingCount}待处理
             </span>
           )}
         </div>

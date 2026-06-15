@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Play,
   AlertCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatsCard from '@/components/StatsCard';
@@ -24,7 +25,7 @@ type TabType = 'all' | 'running' | 'ended' | 'draft';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { experiments, addExperiment, getOverviewStats, optimizationPlans, updateOptimizationPlan } = useExperimentStore();
+  const { experiments, addExperiment, getOverviewStats, optimizationPlans, updateOptimizationPlan, getPendingCommentCount } = useExperimentStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -138,6 +139,12 @@ export default function Home() {
               <span className="text-sm text-slate-400">
                 共 {optimizationPlans.length} 项
               </span>
+              <button
+                onClick={() => navigate('/optimization-board')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+              >
+                看板视图 <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
           <div className="p-5">

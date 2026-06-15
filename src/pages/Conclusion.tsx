@@ -43,6 +43,9 @@ export default function Conclusion() {
     endExperiment,
     addOptimizationPlan,
     addNotification,
+    markCommentHandled,
+    createReportSnapshot,
+    reportSnapshots,
   } = useExperimentStore();
 
   useEffect(() => {
@@ -101,9 +104,13 @@ export default function Conclusion() {
 
   const handleAddComment = () => {
     if (!commentInput.trim()) return;
-    addComment(commentInput.trim(), '运营管理员');
     
     const mentionMatch = commentInput.match(/@(\S+)/);
+    const isPendingMention = !!mentionMatch;
+    const newCommentId = `comment-${Date.now()}`;
+    
+    addComment(commentInput.trim(), '运营管理员', isPendingMention, newCommentId);
+    
     if (mentionMatch && currentExperiment) {
       addNotification({
         type: 'comment_mention',
@@ -111,6 +118,7 @@ export default function Conclusion() {
         experimentName: currentExperiment.name,
         fromUserName: '运营管理员',
         content: `在评论中@了你：${commentInput.substring(0, 30)}${commentInput.length > 30 ? '...' : ''}`,
+        commentId: newCommentId,
       });
     }
     
@@ -169,12 +177,14 @@ export default function Conclusion() {
   const handleInviteColleague = () => {
     if (!currentExperiment) return;
     
+    const pendingCommentId = `comment-invite-${Date.now()}`;
     addNotification({
       type: 'invite',
       experimentId: currentExperiment.id,
       experimentName: currentExperiment.name,
       fromUserName: '运营管理员',
       content: `邀请你参与实验讨论：${currentExperiment.name}`,
+      commentId: pendingCommentId,
     });
   };
 
@@ -460,7 +470,7 @@ export default function Conclusion() {
 
             <div className="space-y-4 mb-5 max-h-80 overflow-y-auto">
               {comments.map((comment) => (
-                <div key={comment.id} className="animate-fade-in-up">
+                <div key={comment.id} className={cn('animate-fade-in-up', comment.isPending && 'relative')}>
                   <div className="flex gap-3">
                     <img
                       src={comment.userAvatar}
@@ -468,10 +478,30 @@ export default function Conclusion() {
                       className="w-9 h-9 rounded-full bg-slate-100 flex-shrink-0"
                     />
                     <div className="flex-1">
-                      <div className="bg-slate-50 rounded-xl p-3">
+                      <div className={cn(
+                        'rounded-xl p-3',
+                        comment.isPending ? 'bg-primary-50 border border-primary-100' : 'bg-slate-50'
+                      )}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-slate-800">{comment.userName}</span>
-                          <span className="text-xs text-slate-400">{comment.createdAt}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-800">{comment.userName}</span>
+                            {comment.isPending && (
+                              <span className="px-1.5 py-0.5 text-xs bg-warning-100 text-warning-700 rounded-md font-medium">
+                                待处理
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {comment.isPending && (
+                              <button
+                                onClick={() => markCommentHandled(comment.id)}
+                                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                              >
+                                标为已处理
+                              </button>
+                            )}
+                            <span className="text-xs text-slate-400">{comment.createdAt}</span>
+                          </div>
                         </div>
                         <p className="text-sm text-slate-600">{comment.content}</p>
                       </div>
@@ -699,14 +729,19 @@ export default function Conclusion() {
               </button>
 
               <button 
-                onClick={() => setShowReport(true)}
+                onClick={() => {
+                  if (currentExperimentId) {
+                    createReportSnapshot(currentExperimentId);
+                  }
+                  setShowReport(true);
+                }}
                 className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-200 hover:bg-primary-50/30 transition-all text-left">
                 <div className="w-10 h-10 rounded-lg bg-warning-50 flex items-center justify-center">
                   <Download className="w-5 h-5 text-warning-600" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-800">导出实验报告</p>
-                  <p className="text-xs text-slate-500">生成实验报告预览，支持导出和打印</p>
+                  <p className="text-xs text-slate-500">生成快照并预览报告，支持导出和打印</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>

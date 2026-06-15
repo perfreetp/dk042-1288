@@ -1,5 +1,7 @@
-import { X, Download, Printer, FileText, Users, Target, BarChart3, MessageSquare, Lightbulb } from 'lucide-react';
-import type { Experiment, ExperimentGroup, SegmentRule, Comment, ExperimentHypothesis, GroupMetrics } from '@/types';
+import { useState } from 'react';
+import { X, Download, Printer, FileText, Users, Target, BarChart3, MessageSquare, Lightbulb, History } from 'lucide-react';
+import type { Experiment, ExperimentGroup, SegmentRule, Comment, ExperimentHypothesis, GroupMetrics, ReportSnapshot } from '@/types';
+import { useExperimentStore } from '@/store/useExperimentStore';
 import { cn } from '@/lib/utils';
 
 interface ExperimentReportModalProps {
@@ -18,14 +20,41 @@ export default function ExperimentReportModal({
   isOpen,
   onClose,
   experiment,
-  groups,
-  segmentRule,
-  metrics,
-  comments,
-  hypothesis,
-  isFrozen,
+  groups: liveGroups,
+  segmentRule: liveSegmentRule,
+  metrics: liveMetrics,
+  comments: liveComments,
+  hypothesis: liveHypothesis,
+  isFrozen: liveIsFrozen,
 }: ExperimentReportModalProps) {
-  if (!isOpen || !experiment) return null;
+  const { reportSnapshots } = useExperimentStore();
+  const [viewingSnapshotId, setViewingSnapshotId] = useState<string | null>(null);
+
+  const currentSnapshot = viewingSnapshotId 
+    ? reportSnapshots.find(s => s.id === viewingSnapshotId) 
+    : null;
+
+  const experiment_ = currentSnapshot ? { 
+    ...experiment!, 
+    name: currentSnapshot.data.experiment.name,
+    description: currentSnapshot.data.experiment.description,
+    type: currentSnapshot.data.experiment.type,
+    appVersion: currentSnapshot.data.experiment.appVersion,
+    status: currentSnapshot.data.experiment.status as any,
+  } : experiment;
+
+  const groups = currentSnapshot ? currentSnapshot.data.groups : liveGroups;
+  const segmentRule = currentSnapshot ? currentSnapshot.data.segmentRule : liveSegmentRule;
+  const metrics = currentSnapshot ? currentSnapshot.data.metrics : liveMetrics;
+  const comments = currentSnapshot ? currentSnapshot.data.comments : liveComments;
+  const hypothesis = currentSnapshot ? currentSnapshot.data.hypothesis : liveHypothesis;
+  const isFrozen = currentSnapshot ? currentSnapshot.data.isFrozen : liveIsFrozen;
+
+  const experimentSnapshots = experiment 
+    ? reportSnapshots.filter(s => s.experimentId === experiment.id).slice(0, 10)
+    : [];
+
+  if (!isOpen || !experiment_) return null;
 
   const controlMetrics = metrics.find(m => m.type === 'control');
   const variantMetrics = metrics.find(m => m.type === 'variant');
@@ -56,7 +85,7 @@ export default function ExperimentReportModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${experiment.name}-实验报告.txt`;
+    a.download = `${experiment_.name}-实验报告.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -70,15 +99,15 @@ export default function ExperimentReportModal({
       '========================================',
       '',
       '【实验基本信息】',
-      `实验名称：${experiment.name}`,
-      `实验描述：${experiment.description}`,
-      `实验类型：${experiment.type === 'entry' ? '功能入口' : experiment.type === 'popup' ? '弹窗文案' : '会员权益'}`,
-      `应用版本：${experiment.appName} ${experiment.appVersion}`,
-      `实验状态：${experiment.status === 'running' ? '进行中' : experiment.status === 'ended' ? '已结束' : experiment.status === 'draft' ? '草稿' : '已暂停'}`,
+      `实验名称：${experiment_.name}`,
+      `实验描述：${experiment_.description}`,
+      `实验类型：${experiment_.type === 'entry' ? '功能入口' : experiment_.type === 'popup' ? '弹窗文案' : '会员权益'}`,
+      `应用版本：${experiment_.appName} ${experiment_.appVersion}`,
+      `实验状态：${experiment_.status === 'running' ? '进行中' : experiment_.status === 'ended' ? '已结束' : experiment_.status === 'draft' ? '草稿' : '已暂停'}`,
       isFrozen ? '结果状态：已冻结' : '',
       '',
       '【实验假设】',
-      hypothesis[0]?.assumption || experiment.hypothesis || '暂无假设',
+      hypothesis[0]?.assumption || experiment_.hypothesis || '暂无假设',
       '',
       '【分组配置】',
       ...groups.map((g, i) => [
@@ -139,10 +168,32 @@ export default function ExperimentReportModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-800">实验报告</h2>
-              <p className="text-sm text-slate-500">{experiment.name}</p>
+              <p className="text-sm text-slate-500">{experiment_?.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {experimentSnapshots.length > 0 && (
+              <div className="flex items-center gap-1 mr-2">
+                <History className="w-4 h-4 text-slate-400" />
+                <select
+                  value={viewingSnapshotId || ''}
+                  onChange={(e) => setViewingSnapshotId(e.target.value || null)}
+                  className="text-sm border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+                  <option value="">当前数据</option>
+                  {experimentSnapshots.map(s => (
+                    <option key={s.id} value={s.id}>
+                      快照 {s.createdAt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {viewingSnapshotId && (
+              <span className="px-2 py-1 text-xs bg-warning-50 text-warning-700 rounded-md">
+                查看历史快照
+              </span>
+            )}
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
@@ -176,17 +227,17 @@ export default function ExperimentReportModal({
               <div className="p-3 bg-slate-50 rounded-lg">
                 <p className="text-xs text-slate-400 mb-1">实验类型</p>
                 <p className="text-sm font-medium text-slate-700">
-                  {experiment.type === 'entry' ? '功能入口' : experiment.type === 'popup' ? '弹窗文案' : '会员权益'}
+                  {experiment_.type === 'entry' ? '功能入口' : experiment_.type === 'popup' ? '弹窗文案' : '会员权益'}
                 </p>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg">
                 <p className="text-xs text-slate-400 mb-1">应用版本</p>
-                <p className="text-sm font-medium text-slate-700">{experiment.appVersion}</p>
+                <p className="text-sm font-medium text-slate-700">{experiment_.appVersion}</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg">
                 <p className="text-xs text-slate-400 mb-1">实验状态</p>
                 <p className="text-sm font-medium text-slate-700">
-                  {experiment.status === 'running' ? '进行中' : experiment.status === 'ended' ? '已结束' : '草稿'}
+                  {experiment_.status === 'running' ? '进行中' : experiment_.status === 'ended' ? '已结束' : '草稿'}
                 </p>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg">
@@ -205,7 +256,7 @@ export default function ExperimentReportModal({
             </div>
             <div className="p-4 bg-warning-50 rounded-xl border border-warning-100">
               <p className="text-sm text-slate-700 leading-relaxed">
-                {hypothesis[0]?.assumption || experiment.hypothesis || '暂无实验假设'}
+                {hypothesis[0]?.assumption || experiment_.hypothesis || '暂无实验假设'}
               </p>
             </div>
           </section>

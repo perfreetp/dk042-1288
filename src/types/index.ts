@@ -90,6 +90,7 @@ export interface Comment {
   userAvatar: string;
   content: string;
   createdAt: string;
+  isPending?: boolean;
   replies?: Comment[];
 }
 
@@ -153,4 +154,28 @@ export interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  commentId?: string;
+}
+
+export interface ReportSnapshot {
+  id: string;
+  experimentId: string;
+  experimentName: string;
+  createdAt: string;
+  data: {
+    experiment: {
+      name: string;
+      description: string;
+      type: 'entry' | 'popup' | 'benefit';
+      appVersion: string;
+      appName: string;
+      status: string;
+    };
+    groups: ExperimentGroup[];
+    segmentRule: SegmentRule | null;
+    metrics: GroupMetrics[];
+    comments: Comment[];
+    hypothesis: ExperimentHypothesis[];
+    isFrozen: boolean;
+  };
 }
