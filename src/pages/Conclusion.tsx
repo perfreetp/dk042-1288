@@ -22,9 +22,12 @@ import {
   Users,
   BarChart3,
   AlertCircle,
+  ChevronRight,
+  UserPlus,
 } from 'lucide-react';
 import { useExperimentStore } from '@/store/useExperimentStore';
 import { cn } from '@/lib/utils';
+import ExperimentReportModal from '@/components/ExperimentReportModal';
 
 export default function Conclusion() {
   const navigate = useNavigate();
@@ -38,6 +41,8 @@ export default function Conclusion() {
     updateHypothesis,
     freezeResults,
     endExperiment,
+    addOptimizationPlan,
+    addNotification,
   } = useExperimentStore();
 
   useEffect(() => {
@@ -66,6 +71,7 @@ export default function Conclusion() {
   const [tags, setTags] = useState<string[]>(hypothesis[0]?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [syncStatus, setSyncStatus] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     setAssumption(hypothesis[0]?.assumption || currentExperiment?.hypothesis || '');
@@ -95,7 +101,19 @@ export default function Conclusion() {
 
   const handleAddComment = () => {
     if (!commentInput.trim()) return;
-    addComment(commentInput.trim(), '我');
+    addComment(commentInput.trim(), '运营管理员');
+    
+    const mentionMatch = commentInput.match(/@(\S+)/);
+    if (mentionMatch && currentExperiment) {
+      addNotification({
+        type: 'comment_mention',
+        experimentId: currentExperiment.id,
+        experimentName: currentExperiment.name,
+        fromUserName: '运营管理员',
+        content: `在评论中@了你：${commentInput.substring(0, 30)}${commentInput.length > 30 ? '...' : ''}`,
+      });
+    }
+    
     setCommentInput('');
   };
 
@@ -131,10 +149,33 @@ export default function Conclusion() {
   };
 
   const handleSyncPlan = () => {
+    if (!currentExperiment) return;
+    
+    addOptimizationPlan({
+      experimentId: currentExperiment.id,
+      experimentName: currentExperiment.name,
+      conclusionSummary: conclusion || hypothesis[0]?.conclusion || currentExperiment.description,
+      owner: '运营管理员',
+      priority: 'medium',
+      status: 'todo',
+    });
+    
     setSyncStatus(true);
     setTimeout(() => {
       setSyncStatus(false);
     }, 2000);
+  };
+
+  const handleInviteColleague = () => {
+    if (!currentExperiment) return;
+    
+    addNotification({
+      type: 'invite',
+      experimentId: currentExperiment.id,
+      experimentName: currentExperiment.name,
+      fromUserName: '运营管理员',
+      content: `邀请你参与实验讨论：${currentExperiment.name}`,
+    });
   };
 
   const clickRateUplift = calculateUplift(
@@ -397,7 +438,7 @@ export default function Conclusion() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-card p-6">
+          <div id="discussion-section" className="bg-white rounded-xl shadow-card p-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-warning-50 flex items-center justify-center">
@@ -408,8 +449,11 @@ export default function Conclusion() {
                   <p className="text-sm text-slate-500">{comments.length} 条评论</p>
                 </div>
               </div>
-              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
-                <Users className="w-4 h-4" />
+              <button 
+                onClick={handleInviteColleague}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+              >
+                <UserPlus className="w-4 h-4" />
                 邀请同事
               </button>
             </div>
@@ -654,13 +698,15 @@ export default function Conclusion() {
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
 
-              <button className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-200 hover:bg-primary-50/30 transition-all text-left">
+              <button 
+                onClick={() => setShowReport(true)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-200 hover:bg-primary-50/30 transition-all text-left">
                 <div className="w-10 h-10 rounded-lg bg-warning-50 flex items-center justify-center">
                   <Download className="w-5 h-5 text-warning-600" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-800">导出实验报告</p>
-                  <p className="text-xs text-slate-500">生成 PDF 格式实验报告</p>
+                  <p className="text-xs text-slate-500">生成实验报告预览，支持导出和打印</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
@@ -727,25 +773,18 @@ export default function Conclusion() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function ChevronRight({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
+      <ExperimentReportModal
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        experiment={currentExperiment}
+        groups={expData?.groups || []}
+        segmentRule={expData?.segmentRule || null}
+        metrics={currentMetrics as any}
+        comments={comments}
+        hypothesis={hypothesis}
+        isFrozen={isFrozen}
+      />
+    </div>
   );
 }

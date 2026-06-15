@@ -9,6 +9,8 @@ import type {
   AbnormalAlert,
   CoreMetrics,
   MetricData,
+  OptimizationPlan,
+  Notification,
 } from '@/types';
 import {
   mockExperiments,
@@ -40,7 +42,10 @@ interface ExperimentStore {
   currentExperimentId: string | null;
   overviewStats: typeof mockOverviewStats;
   experimentsData: Record<string, ExperimentData>;
+  optimizationPlans: OptimizationPlan[];
+  notifications: Notification[];
   getOverviewStats: () => typeof mockOverviewStats;
+  getUnreadNotificationCount: () => number;
   
   setCurrentExperiment: (id: string) => void;
   getCurrentExperiment: () => Experiment | null;
@@ -64,6 +69,13 @@ interface ExperimentStore {
   
   getExperimentData: (id: string) => ExperimentData | undefined;
   ensureExperimentData: (id: string, type: 'entry' | 'popup' | 'benefit') => void;
+  
+  addOptimizationPlan: (plan: Omit<OptimizationPlan, 'id' | 'createdAt'>) => string;
+  updateOptimizationPlan: (id: string, data: Partial<OptimizationPlan>) => void;
+  
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   
   clearAllData: () => void;
 }
@@ -106,6 +118,8 @@ export const useExperimentStore = create<ExperimentStore>()(
       overviewStats: mockOverviewStats,
       
       experimentsData: initializeExperimentData(),
+      optimizationPlans: [],
+      notifications: [],
       
       setCurrentExperiment: (id: string) => {
         const state = get();
@@ -407,11 +421,65 @@ export const useExperimentStore = create<ExperimentStore>()(
         };
       },
 
+      getUnreadNotificationCount: () => {
+        const state = get();
+        return state.notifications.filter(n => !n.isRead).length;
+      },
+
+      addOptimizationPlan: (plan) => {
+        const newId = `plan-${Date.now()}`;
+        const newPlan: OptimizationPlan = {
+          ...plan,
+          id: newId,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        set((state) => ({
+          optimizationPlans: [newPlan, ...state.optimizationPlans],
+        }));
+        return newId;
+      },
+
+      updateOptimizationPlan: (id: string, data: Partial<OptimizationPlan>) => {
+        set((state) => ({
+          optimizationPlans: state.optimizationPlans.map(p =>
+            p.id === id ? { ...p, ...data } : p
+          ),
+        }));
+      },
+
+      addNotification: (notification) => {
+        const newNotification: Notification = {
+          ...notification,
+          id: `notif-${Date.now()}`,
+          isRead: false,
+          createdAt: new Date().toLocaleString('zh-CN'),
+        };
+        set((state) => ({
+          notifications: [newNotification, ...state.notifications],
+        }));
+      },
+
+      markNotificationRead: (id: string) => {
+        set((state) => ({
+          notifications: state.notifications.map(n =>
+            n.id === id ? { ...n, isRead: true } : n
+          ),
+        }));
+      },
+
+      markAllNotificationsRead: () => {
+        set((state) => ({
+          notifications: state.notifications.map(n => ({ ...n, isRead: true })),
+        }));
+      },
+
       clearAllData: () => {
         set({
           experiments: mockExperiments,
           currentExperimentId: null,
           experimentsData: initializeExperimentData(),
+          optimizationPlans: [],
+          notifications: [],
         });
       },
     }),
@@ -422,6 +490,8 @@ export const useExperimentStore = create<ExperimentStore>()(
         experiments: state.experiments,
         experimentsData: (state as any).experimentsData,
         currentExperimentId: state.currentExperimentId,
+        optimizationPlans: state.optimizationPlans,
+        notifications: state.notifications,
       }),
       merge: (persistedState, currentState) => {
         const defaultData = initializeExperimentData();
@@ -473,6 +543,8 @@ export const useExperimentStore = create<ExperimentStore>()(
           experiments: persisted.experiments || mockExperiments,
           experimentsData: mergedExperimentsData,
           currentExperimentId: persisted.currentExperimentId || null,
+          optimizationPlans: persisted.optimizationPlans || [],
+          notifications: persisted.notifications || [],
         };
       },
     }

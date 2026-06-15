@@ -132,3 +132,25 @@ export interface Channel {
   category: string;
   icon: string;
 }
+
+export interface OptimizationPlan {
+  id: string;
+  experimentId: string;
+  experimentName: string;
+  conclusionSummary: string;
+  owner: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'todo' | 'in_progress' | 'done';
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  type: 'comment_mention' | 'invite';
+  experimentId: string;
+  experimentName: string;
+  fromUserName: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}

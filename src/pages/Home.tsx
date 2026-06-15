@@ -7,6 +7,12 @@ import {
   Filter,
   Search,
   Plus,
+  Target,
+  User,
+  Clock,
+  CheckCircle2,
+  Play,
+  AlertCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatsCard from '@/components/StatsCard';
@@ -18,7 +24,7 @@ type TabType = 'all' | 'running' | 'ended' | 'draft';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { experiments, addExperiment, getOverviewStats } = useExperimentStore();
+  const { experiments, addExperiment, getOverviewStats, optimizationPlans, updateOptimizationPlan } = useExperimentStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -63,6 +69,22 @@ export default function Home() {
     return (num * 100).toFixed(1) + '%';
   };
 
+  const priorityConfig = {
+    high: { label: '高', color: 'danger', bg: 'bg-danger-50 text-danger-600' },
+    medium: { label: '中', color: 'warning', bg: 'bg-warning-50 text-warning-600' },
+    low: { label: '低', color: 'success', bg: 'bg-success-50 text-success-600' },
+  };
+
+  const statusConfig = {
+    todo: { label: '待开始', icon: Clock, color: 'text-slate-500' },
+    in_progress: { label: '进行中', icon: Play, color: 'text-primary-500' },
+    done: { label: '已完成', icon: CheckCircle2, color: 'text-success-500' },
+  };
+
+  const handlePlanStatusChange = (planId: string, status: 'todo' | 'in_progress' | 'done') => {
+    updateOptimizationPlan(planId, { status });
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -99,6 +121,77 @@ export default function Home() {
           delay={300}
         />
       </div>
+
+      {optimizationPlans.length > 0 && (
+        <div className="bg-white rounded-xl shadow-card overflow-hidden">
+          <div className="p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-primary-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">优化计划</h3>
+                  <p className="text-sm text-slate-500">沉淀实验结论，推动后续优化</p>
+                </div>
+              </div>
+              <span className="text-sm text-slate-400">
+                共 {optimizationPlans.length} 项
+              </span>
+            </div>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {optimizationPlans.slice(0, 6).map((plan) => {
+                const StatusIcon = statusConfig[plan.status].icon;
+                return (
+                  <div key={plan.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 transition-all cursor-pointer group"
+                    onClick={() => navigate(`/experiments/${plan.experimentId}/conclusion`)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <span className={cn(
+                        'px-2.5 py-1 text-xs font-medium rounded-md',
+                        priorityConfig[plan.priority].bg
+                      )}>
+                        {priorityConfig[plan.priority].label}优先级
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextStatus = plan.status === 'todo' ? 'in_progress' : plan.status === 'in_progress' ? 'done' : 'todo';
+                          handlePlanStatusChange(plan.id, nextStatus);
+                        }}
+                        className={cn(
+                          'p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white',
+                          statusConfig[plan.status].color
+                        )}
+                        title="切换状态"
+                      >
+                        <StatusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <h4 className="font-medium text-slate-800 mb-1 line-clamp-1">{plan.experimentName}</h4>
+                    <p className="text-sm text-slate-500 line-clamp-2 mb-3">{plan.conclusionSummary}</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-500">
+                        <User className="w-3.5 h-3.5" />
+                        <span>{plan.owner}</span>
+                      </div>
+                      <span className={cn(
+                        'flex items-center gap-1',
+                        statusConfig[plan.status].color
+                      )}>
+                        <StatusIcon className="w-3.5 h-3.5" />
+                        {statusConfig[plan.status].label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-card overflow-hidden">
         <div className="p-5 border-b border-slate-100">
